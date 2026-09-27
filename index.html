@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#090d12" />
+  <meta name="description" content="Solana TraceLens — read-only transaction and account observability for Solana developers." />
+  <title>Solana TraceLens — Transaction Observability</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="TraceLens home">
+      <span class="brand-mark">TL</span>
+      <span>Solana TraceLens</span>
+    </a>
+    <nav class="nav">
+      <a href="#inspect">Inspect</a>
+      <a href="#account">Account</a>
+      <a href="#compare">Compare</a>
+      <a href="#about">About</a>
+    </nav>
+    <div id="rpcStatus" class="status-pill"><span class="dot"></span>RPC idle</div>
+  </header>
+  <main id="top">
+    <section class="hero shell">
+      <div class="eyebrow">READ-ONLY · NO WALLET · NO PAID API</div>
+      <h1>Turn Solana execution logs into a story you can debug.</h1>
+      <p class="hero-copy">TraceLens unwraps transaction status, instructions, program logs, balances, and compute usage into a clean execution timeline — without signing or sending anything.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#inspect">Inspect a transaction</a>
+        <button class="btn ghost" id="loadExampleHero" type="button">Load example</button>
+      </div>
+      <div class="hero-stats">
+        <div><strong>0</strong><span>private keys requested</span></div>
+        <div><strong>3</strong><span>RPC modes</span></div>
+        <div><strong>100%</strong><span>read-only</span></div>
+      </div>
+    </section>
+
+    <section id="inspect" class="shell section">
+      <div class="section-head">
+        <div><span class="kicker">TRANSACTION INSPECTOR</span><h2>Follow the execution path.</h2></div>
+        <p>Paste a signature, choose a network, then inspect the result without a wallet.</p>
+      </div>
+      <div class="panel input-panel">
+        <div class="field grow">
+          <label for="txSignature">Transaction signature</label>
+          <input id="txSignature" autocomplete="off" spellcheck="false" placeholder="Paste a Solana signature…" />
+        </div>
+        <div class="field network-field">
+          <label for="networkSelect">Network</label>
+          <select id="networkSelect">
+            <option value="mainnet">Mainnet-beta</option>
+            <option value="devnet">Devnet</option>
+            <option value="custom">Custom RPC</option>
+          </select>
+        </div>
+        <button class="btn primary run-btn" id="inspectBtn" type="button">Inspect</button>
+      </div>
+      <div id="customRpcWrap" class="panel custom-rpc hidden">
+        <div class="field">
+          <label for="customRpc">Custom JSON-RPC endpoint</label>
+          <input id="customRpc" type="url" autocomplete="off" spellcheck="false" placeholder="https://your-rpc.example" />
+          <small>Used only for this browser session. TraceLens never submits transactions.</small>
+        </div>
+      </div>
+      <div id="txMessage" class="message hidden" role="status"></div>
+      <div id="txResult" class="result-stack hidden">
+        <div id="txSummary" class="summary-grid"></div>
+        <div class="result-grid">
+          <article class="panel result-card">
+            <div class="card-head"><h3>Execution timeline</h3><span id="timelineCount" class="count"></span></div>
+            <div id="timeline" class="timeline"></div>
+          </article>
+          <article class="panel result-card">
+            <div class="card-head"><h3>Instructions</h3><span id="instructionCount" class="count"></span></div>
+            <div id="instructions" class="stack-list"></div>
+          </article>
+        </div>
+        <article class="panel result-card">
+          <div class="card-head"><h3>Program logs</h3><button class="text-btn" id="copyLogsBtn" type="button">Copy logs</button></div>
+          <pre id="logs" class="logs"></pre>
+        </article>
+        <div class="result-grid">
+          <article class="panel result-card">
+            <div class="card-head"><h3>Account keys</h3><span id="accountKeyCount" class="count"></span></div>
+            <div id="accountKeys" class="stack-list compact"></div>
+          </article>
+          <article class="panel result-card">
+            <div class="card-head"><h3>Balance deltas</h3></div>
+            <div id="balanceDeltas" class="stack-list compact"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section id="account" class="shell section">
+      <div class="section-head">
+        <div><span class="kicker">ACCOUNT LENS</span><h2>Inspect public account metadata.</h2></div>
+        <p>Owner program, lamports, executable state, and data size from <code>getAccountInfo</code>.</p>
+      </div>
+      <div class="panel input-panel">
+        <div class="field grow">
+          <label for="accountAddress">Public account address</label>
+          <input id="accountAddress" autocomplete="off" spellcheck="false" placeholder="Paste a Solana address…" />
+        </div>
+        <button class="btn primary run-btn" id="accountBtn" type="button">Inspect account</button>
+      </div>
+      <div id="accountMessage" class="message hidden" role="status"></div>
+      <div id="accountResult" class="summary-grid hidden"></div>
+    </section>
+
+    <section id="compare" class="shell section">
+      <div class="section-head">
+        <div><span class="kicker">COMPARE</span><h2>See two executions side by side.</h2></div>
+        <p>Compare status, fees, compute usage, instruction count, and log volume.</p>
+      </div>
+      <div class="panel compare-input">
+        <div class="field"><label for="compareA">Signature A</label><input id="compareA" autocomplete="off" spellcheck="false" /></div>
+        <div class="field"><label for="compareB">Signature B</label><input id="compareB" autocomplete="off" spellcheck="false" /></div>
+        <button class="btn primary" id="compareBtn" type="button">Compare</button>
+      </div>
+      <div id="compareMessage" class="message hidden" role="status"></div>
+      <div id="compareResult" class="panel comparison hidden"></div>
+    </section>
+    <section id="about" class="shell section about">
+      <div class="section-head">
+        <div><span class="kicker">ARCHITECTURE</span><h2>Built for debugging, not custody.</h2></div>
+      </div>
+      <div class="about-grid">
+        <article class="panel"><span class="step">01</span><h3>Read</h3><p>TraceLens calls public Solana JSON-RPC read methods such as <code>getTransaction</code> and <code>getAccountInfo</code>.</p></article>
+        <article class="panel"><span class="step">02</span><h3>Normalize</h3><p>Versioned and legacy response shapes are parsed defensively so missing metadata never crashes the UI.</p></article>
+        <article class="panel"><span class="step">03</span><h3>Explain</h3><p>Logs and instructions are reorganized into a chronological execution view with error context and deltas.</p></article>
+      </div>
+      <div class="safety-note"><strong>Safety model:</strong> no private keys, no wallet adapter, no signing, no transaction submission, no custody. TraceLens is a read-only developer utility.</div>
+    </section>
+  </main>
+  <footer class="footer shell">
+    <span>Solana TraceLens</span>
+    <span>Built on Solana RPC</span>
+    <span>Open-source developer tooling · 2026</span>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>
