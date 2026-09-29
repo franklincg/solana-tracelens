@@ -6,6 +6,7 @@ const els = Object.fromEntries(
   [...document.querySelectorAll("[id]")].map((el) => [el.id, el])
 );
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
+const DBC_PROGRAM = "dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN";
 const lamports = (n) => ((Number(n) || 0) / 1e9).toLocaleString(undefined, { maximumFractionDigits: 9 }) + " SOL";
 const short = (s, n = 8) => !s ? "—" : s.length <= n * 2 + 3 ? s : s.slice(0, n) + "…" + s.slice(-n);
 const fmt = (n) => Number.isFinite(Number(n)) ? Number(n).toLocaleString() : "—";
@@ -231,6 +232,124 @@ async function runAccount() {
     els.accountBtn.textContent = "Inspect account";
   }
 }
+
+function txUsesProgram(tx, programId) {
+  const keys = accountKeyList(tx);
+  const logs = tx && tx.meta && tx.meta.logMessages || [];
+  return keys.includes(programId) || logs.some((line) => line.includes(programId));
+}
+function dbcInstructionLabel(tx) {
+  const logs = tx && tx.meta && tx.meta.logMessages || [];
+  for (const line of logs) {
+    const match = line.match(/^Program log: Instruction: ([A-Za-z0-9_ -]+)/);
+    if (match) return match[1].trim();
+  }
+  return txUsesProgram(tx, DBC_PROGRAM) ? "DBC program call" : "Related account activity";
+}
+async function runDbc() {
+  hideMessage(els.dbcMessage);
+  els.dbcResult.classList.add("hidden");
+  const address = els.dbcAddress.value.trim();
+  if (!validAddress(address)) {
+    showMessage(els.dbcMessage, "That does not look like a valid Solana public account address.", "error");
+    return;
+  }
+
+  els.dbcBtn.disabled = true;
+  els.dbcBtn.textContent = "Inspecting…";
+
+  try {
+    const account = await rpc("getAccountInfo", [address, { encoding: "base64", commitment: "confirmed" }]);
+    if (!account || !account.value) throw new Error("Account was not found on the selected network.");
+
+    const owner = typeof account.value.owner === "string" ? account.value.owner : String(account.value.owner || "");
+    const programOwned = owner === DBC_PROGRAM;
+    const signatures = await rpc("getSignaturesForAddress", [address, { limit: 6, commitment: "confirmed" }]);
+    const rows = [];
+
+    for (const entry of signatures || []) {
+      try {
+        const tx = await rpc("getTransaction", [entry.signature, {
+          encoding: "jsonParsed",
+          maxSupportedTransactionVersion: 0,
+          commitment: "confirmed"
+        }]);
+        if (!tx) continue;
+        rows.push({
+          signature: entry.signature,
+          dbc: txUsesProgram(tx, DBC_PROGRAM),
+          label: dbcInstructionLabel(tx),
+          ok: tx.meta && tx.meta.err == null,
+          blockTime: tx.blockTime
+        });
+      } catch {
+        rows.push({
+          signature: entry.signature,
+          dbc: false,
+          label: "RPC detail unavailable",
+          ok: entry.err == null,
+          blockTime: entry.blockTime
+        });
+      }
+    }
+
+    const dbcCalls = rows.filter((row) => row.dbc).length;
+    const latest = rows.length ? isoTime(rows[0].blockTime) : "—";
+    els.dbcSummary.innerHTML = [
+      metric("Owner", programOwned ? "Meteora DBC" : "Other program", short(owner, 10), programOwned ? "good" : "bad"),
+      metric("Program", short(DBC_PROGRAM, 10), "official DBC program"),
+      metric("Recent txs", String(rows.length), "latest signatures sampled"),
+      metric("DBC calls", String(dbcCalls), "program present in sampled txs"),
+      metric("Latest activity", latest, "selected RPC")
+    ].join("");
+
+    els.dbcTxCount.textContent = rows.length + " sampled";
+    els.dbcTransactions.innerHTML = rows.length ? rows.map((row) =>
+      listRow(
+        row.label,
+        short(row.signature, 11) + " · " + isoTime(row.blockTime),
+        (row.ok ? "success" : "failed") + (row.dbc ? " · DBC" : "")
+      )
+    ).join("") : listRow("No recent signatures returned for this account.");
+
+    const signals = [];
+    signals.push(listRow(
+      programOwned ? "Program ownership verified" : "Account is not owned by the DBC program",
+      programOwned
+        ? "getAccountInfo owner matches Meteora's published Dynamic Bonding Curve program."
+        : "This may be a related mint, vault, or unrelated account; verify the address before drawing DBC conclusions.",
+      programOwned ? "verified" : "check"
+    ));
+    signals.push(listRow(
+      dbcCalls ? "DBC execution observed" : "No DBC invocation in sampled transactions",
+      dbcCalls
+        ? dbcCalls + " of " + rows.length + " sampled transactions reference the DBC program."
+        : "TraceLens only classifies what the selected RPC returned in the recent sample.",
+      dbcCalls ? "live" : "sample"
+    ));
+    signals.push(listRow(
+      "Read-only inspection",
+      "No wallet connection, signing, pool creation, or transaction submission.",
+      "safe"
+    ));
+    els.dbcSignals.innerHTML = signals.join("");
+
+    els.dbcResult.classList.remove("hidden");
+    showMessage(
+      els.dbcMessage,
+      programOwned
+        ? "Live Meteora DBC account data loaded from Solana."
+        : "Live account data loaded, but the owner does not match the Meteora DBC program.",
+      programOwned ? "success" : "info"
+    );
+  } catch (err) {
+    showMessage(els.dbcMessage, err.message || "Unable to inspect the DBC account.", "error");
+  } finally {
+    els.dbcBtn.disabled = false;
+    els.dbcBtn.textContent = "Inspect DBC";
+  }
+}
+
 async function runCompare() {
   hideMessage(els.compareMessage);
   els.compareResult.classList.add("hidden");
@@ -322,6 +441,7 @@ els.networkSelect.addEventListener("change", () => {
 });
 els.inspectBtn.addEventListener("click", runInspect);
 els.accountBtn.addEventListener("click", runAccount);
+els.dbcBtn.addEventListener("click", runDbc);
 els.compareBtn.addEventListener("click", runCompare);
 els.loadExampleHero.addEventListener("click", loadExample);
 els.copyLogsBtn.addEventListener("click", async () => {
@@ -338,6 +458,9 @@ els.txSignature.addEventListener("keydown", (e) => {
 });
 els.accountAddress.addEventListener("keydown", (e) => {
   if (e.key === "Enter") runAccount();
+});
+els.dbcAddress.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") runDbc();
 });
 setRpcStatus("RPC idle", "");
 

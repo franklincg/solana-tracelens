@@ -21,6 +21,7 @@
     <nav class="nav">
       <a href="#inspect">Inspect</a>
       <a href="#account">Account</a>
+      <a href="#dbc">Meteora DBC</a>
       <a href="#compare">Compare</a>
       <a href="#about">About</a>
     </nav>
@@ -112,6 +113,35 @@
       </div>
       <div id="accountMessage" class="message hidden" role="status"></div>
       <div id="accountResult" class="summary-grid hidden"></div>
+    </section>
+
+    <section id="dbc" class="shell section">
+      <div class="section-head">
+        <div><span class="kicker">METEORA DBC LENS</span><h2>Trace a live bonding-curve account.</h2></div>
+        <p>Verify Meteora Dynamic Bonding Curve ownership, then inspect recent on-chain activity without a wallet.</p>
+      </div>
+      <div class="panel input-panel">
+        <div class="field grow">
+          <label for="dbcAddress">DBC pool or program-owned account</label>
+          <input id="dbcAddress" autocomplete="off" spellcheck="false" placeholder="Paste a Meteora DBC account address…" />
+          <small>Read-only. Uses the selected Solana RPC and Meteora's published DBC program ID.</small>
+        </div>
+        <button class="btn primary run-btn" id="dbcBtn" type="button">Inspect DBC</button>
+      </div>
+      <div id="dbcMessage" class="message hidden" role="status"></div>
+      <div id="dbcResult" class="result-stack hidden">
+        <div id="dbcSummary" class="summary-grid"></div>
+        <div class="result-grid">
+          <article class="panel result-card">
+            <div class="card-head"><h3>Recent account activity</h3><span id="dbcTxCount" class="count"></span></div>
+            <div id="dbcTransactions" class="stack-list"></div>
+          </article>
+          <article class="panel result-card">
+            <div class="card-head"><h3>DBC signals</h3></div>
+            <div id="dbcSignals" class="stack-list"></div>
+          </article>
+        </div>
+      </div>
     </section>
 
     <section id="compare" class="shell section">

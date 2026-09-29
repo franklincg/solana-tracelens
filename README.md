@@ -28,6 +28,18 @@ Inspect a public Solana account with `getAccountInfo` and see:
 - rent epoch metadata
 - account data size information when available
 
+### Meteora DBC Lens
+Inspect a Meteora Dynamic Bonding Curve program-owned account from the same read-only interface. TraceLens:
+
+- verifies the account owner against Meteora's published DBC program ID
+- loads recent signatures for the account
+- samples the corresponding transactions
+- detects DBC program participation
+- surfaces Anchor instruction labels from program logs when available
+- never creates a pool, signs, or submits a transaction
+
+This integration is intentionally observational. It uses live Solana RPC data and keeps the existing no-wallet safety model.
+
 ### Compare
 Load two transaction signatures side by side and compare:
 
@@ -114,12 +126,14 @@ The current product is deliberately narrow: make public Solana execution data ea
 - transaction inspection
 - public account inspection
 - transaction comparison
+- live Meteora DBC account/activity inspection
 - responsive UI
 - no paid API dependency
 - no wallet or signing requirement
 
 ### Next technical milestones
 
+- deeper Meteora DBC account decoding through the official SDK/IDL
 - richer inner-instruction visualization
 - token balance deltas
 - common Solana program labels
